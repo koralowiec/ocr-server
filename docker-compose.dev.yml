@@ -1,0 +1,12 @@
+version: '2.4'
+services:
+  ocr-server:
+    build: 
+      context: .
+      target: dev
+    ports: 
+      - "5001:5000"
+    volumes:
+      - ./src:/src/src
+    environment:
+      - PYTHONUNBUFFERED=1
