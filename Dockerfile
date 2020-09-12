@@ -16,17 +16,9 @@ RUN pip3 install -r requirements.txt
 
 COPY . ./
 
-ENV FLASK_APP="src/main.py"
-
-CMD [ "flask", "run", "--host=0.0.0.0" ]
+CMD [ "uvicorn", "--app-dir", "src", "main:app", "--port", "5000", "--host", "0.0.0.0" ]
 
 # for local development
 FROM prod as dev
 
-RUN apt install -y curl \
-    && curl -sL https://deb.nodesource.com/setup_12.x | bash \
-    && apt install -y nodejs
-
-RUN npm i nodemon -g
-
-CMD [ "nodemon" ]
+CMD [ "uvicorn", "--app-dir", "src", "main:app", "--reload", "--port", "5000", "--host", "0.0.0.0" ]

@@ -1,48 +1,34 @@
-from flask import Flask, request, Response
-import json
-import pytesseract
-import cv2
-import numpy as np
+from fastapi import FastAPI, File, Depends
+from typing import Optional
+from pydantic import BaseModel, Field
 import base64
 
-app = Flask(__name__)
+from recognize_service import RecognizeService
 
-characters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-
-def run_ocr(image, psm):
-    tesseract_conf = f"-c tessedit_char_whitelist={characters} --psm {psm}"
-    number = pytesseract.image_to_string(image, config=tesseract_conf)
-    print(f"Number (psm: {psm}): {number}")
-
-    return clean_up_number(number)
+app = FastAPI()
 
 
-def clean_up_number(number):
-    bad_chars = ["\n\x0c", "\x0c"]
-
-    for char in bad_chars:
-        number = number.replace(char, "")
-
-    return number
+class Base64Body(BaseModel):
+    b64Encoded: str = Field(..., title="Image encoded in Base64")
 
 
-@app.route("/ocr", methods=["POST"])
-def ocr():
-    is_image_in_base64 = request.args.get("base64", default=False)
+@app.post("/ocr/base64")
+async def recognize_characters_from_base64(
+    b64: Base64Body, recognize_service: RecognizeService = Depends()
+):
+    img_bytes = base64.b64decode(b64.b64Encoded)
 
-    if is_image_in_base64:
-        img = request.json["img"]
-        img_bytes = base64.b64decode(img)
-        np_img = np.frombuffer(img_bytes, dtype=np.uint8)
-    else:
-        img = request.files["file"]
-        np_img = np.fromstring(img.read(), np.uint8)
+    return recognize_service.get_numbers(img_bytes)
 
-    img = cv2.imdecode(np_img, cv2.IMREAD_UNCHANGED)
 
-    numbers = []
-    numbers.append(run_ocr(img, "9"))
-    numbers.append(run_ocr(img, "11"))
+@app.post("/ocr/raw")
+async def recognize_characters_from_raw_image(
+    file: bytes = File(...), recognize_service: RecognizeService = Depends()
+):
+    return recognize_service.get_numbers(file)
 
-    return Response(json.dumps(numbers), mimetype="application/json")
+
+@app.get("/")
+async def healthcheck():
+    return "ok"
+
