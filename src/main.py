@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 import base64
 
 from recognize_service import RecognizeService
+from image_preprocessing_service import ImagePreprocessingService
 
 app = FastAPI()
 
@@ -23,9 +24,21 @@ async def recognize_characters_from_base64(
 
 @app.post("/ocr/raw")
 async def recognize_characters_from_raw_image(
-    file: bytes = File(...), recognize_service: RecognizeService = Depends()
+    file: bytes = File(...),
+    recognize_service: RecognizeService = Depends(),
+    img_prep_service: ImagePreprocessingService = Depends(),
 ):
-    return recognize_service.get_numbers(file)
+    characters = img_prep_service.get_separate_characters_from_image(file)
+    number_from_separate_chars = recognize_service.get_numbers_from_separate_characters(
+        characters
+    )
+
+    numbers_from_ocr = recognize_service.get_numbers(file)
+
+    return {
+        "numberFromSeparateChars": number_from_separate_chars,
+        "numbersFromOCR": numbers_from_ocr,
+    }
 
 
 @app.get("/")
