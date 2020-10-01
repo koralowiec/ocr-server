@@ -14,7 +14,6 @@ class ImagePreprocessingService:
 
         # saving doesn't work
         for i in range(len(characters)):
-            print(i)
             cv2.imwrite(f"numbers/{i}.jpeg", characters[i])
 
         return characters
@@ -49,13 +48,28 @@ class ImagePreprocessingService:
     def get_rects(self, cont, img):
         crop_characters = []
 
+        img_height = img.shape[0]
+        img_width = img.shape[1]
+
         for c in self.sort_contours(cont):
             (x, y, w, h) = cv2.boundingRect(c)
             ratio = h / w
-            if 1 <= ratio <= 3.5:
-                if h / img.shape[0] >= 0.4:
-                    # curr_num = img[y : y + h, x : x + w]
-                    curr_num = img[y - 3 : y + h + 3, x - 3 : x + w + 3]
+            if 1 <= ratio <= 10:
+                if h / img_height >= 0.2:
+                    bias = 3
+
+                    y_1 = 0 if y - bias < 0 else y - bias
+                    y_2 = (
+                        img_height
+                        if y + h + bias > img_height
+                        else y + h + bias
+                    )
+                    x_1 = 0 if x - bias < 0 else x - bias
+                    x_2 = (
+                        img_width if x + w + bias > img_width else x + w + bias
+                    )
+
+                    curr_num = img[y_1:y_2, x_1:x_2]
                     crop_characters.append(curr_num)
 
         return crop_characters

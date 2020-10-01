@@ -8,5 +8,6 @@ services:
       - "5002:5000"
     volumes:
       - ./src:/src/src
+      - ./img:/img
     environment:
       - PYTHONUNBUFFERED=1

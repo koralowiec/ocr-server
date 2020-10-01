@@ -1,5 +1,7 @@
 FROM ubuntu:focal as prod
 
+LABEL org.opencontainers.image.source https://github.com/koralowiec/ocr-server
+
 WORKDIR /src
 
 # https://serverfault.com/a/1016972
