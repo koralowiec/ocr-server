@@ -1,5 +1,4 @@
 from fastapi import FastAPI, File, Depends
-from typing import Optional
 from pydantic import BaseModel, Field
 import base64
 
@@ -14,14 +13,48 @@ class Base64Body(BaseModel):
 
 
 def process_image_raw(
-    file: bytes = File(...),
-    recognize_service: RecognizeService = Depends(),
-    img_prep_service: ImagePreprocessingService = Depends(),
+    file: bytes = File(...), recognize_service: RecognizeService = Depends(),
 ):
-    characters = img_prep_service.get_separate_characters_from_image(file)
+    (
+        characters,
+        characters_in_one_image,
+        characters_in_one_image_bordered,
+    ) = ImagePreprocessingService.get_separate_characters_from_image(file)
     number_from_separate_chars = recognize_service.get_numbers_from_separate_characters(
         characters
     )
+    number_from_characters_one_image = recognize_service.run_ocr(
+        characters_in_one_image, 7
+    )
+    print("7", number_from_characters_one_image)
+    number_from_characters_one_image = recognize_service.run_ocr(
+        characters_in_one_image, 8
+    )
+    print("8", number_from_characters_one_image)
+    number_from_characters_one_image = recognize_service.run_ocr(
+        characters_in_one_image, 9
+    )
+    print("9", number_from_characters_one_image)
+    number_from_characters_one_image = recognize_service.run_ocr(
+        characters_in_one_image, 11
+    )
+    print("11", number_from_characters_one_image)
+    number_from_characters_one_image = recognize_service.run_ocr(
+        characters_in_one_image_bordered, 7
+    )
+    print("7", number_from_characters_one_image)
+    number_from_characters_one_image = recognize_service.run_ocr(
+        characters_in_one_image_bordered, 8
+    )
+    print("8", number_from_characters_one_image)
+    number_from_characters_one_image = recognize_service.run_ocr(
+        characters_in_one_image_bordered, 9
+    )
+    print("9", number_from_characters_one_image)
+    number_from_characters_one_image = recognize_service.run_ocr(
+        characters_in_one_image_bordered, 11
+    )
+    print("11", number_from_characters_one_image)
 
     numbers_from_ocr = recognize_service.get_numbers(file)
 
@@ -32,15 +65,49 @@ def process_image_raw(
 
 
 def process_image_base64(
-    b64: Base64Body,
-    recognize_service: RecognizeService = Depends(),
-    img_prep_service: ImagePreprocessingService = Depends(),
+    b64: Base64Body, recognize_service: RecognizeService = Depends(),
 ):
     file = base64.b64decode(b64.b64Encoded)
-    characters = img_prep_service.get_separate_characters_from_image(file)
+    (
+        characters,
+        characters_in_one_image,
+        characters_in_one_image_bordered,
+    ) = ImagePreprocessingService.get_separate_characters_from_image(file)
     number_from_separate_chars = recognize_service.get_numbers_from_separate_characters(
         characters
     )
+    number_from_characters_one_image = recognize_service.run_ocr(
+        characters_in_one_image, 7
+    )
+    print("7", number_from_characters_one_image)
+    number_from_characters_one_image = recognize_service.run_ocr(
+        characters_in_one_image, 8
+    )
+    print("8", number_from_characters_one_image)
+    number_from_characters_one_image = recognize_service.run_ocr(
+        characters_in_one_image, 9
+    )
+    print("9", number_from_characters_one_image)
+    number_from_characters_one_image = recognize_service.run_ocr(
+        characters_in_one_image, 11
+    )
+    print("11", number_from_characters_one_image)
+    number_from_characters_one_image = recognize_service.run_ocr(
+        characters_in_one_image_bordered, 7
+    )
+    print("7", number_from_characters_one_image)
+    number_from_characters_one_image = recognize_service.run_ocr(
+        characters_in_one_image_bordered, 8
+    )
+    print("8", number_from_characters_one_image)
+    number_from_characters_one_image = recognize_service.run_ocr(
+        characters_in_one_image_bordered, 9
+    )
+    print("9", number_from_characters_one_image)
+    number_from_characters_one_image = recognize_service.run_ocr(
+        characters_in_one_image_bordered, 11
+    )
+    print("11", number_from_characters_one_image)
 
     numbers_from_ocr = recognize_service.get_numbers(file)
 

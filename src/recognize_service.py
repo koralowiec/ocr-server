@@ -8,19 +8,19 @@ class RecognizeService:
     characters: str = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     bad_chars: List[str] = ["\n\x0c", "\x0c"]
     psms: List[str] = [
-        "1",
-        "2",
-        "3",
-        "4",
-        "5",
-        "6",
+        # "1",
+        # "2",
+        # "3",
+        # "4",
+        # "5",
+        # "6",
         "7",
         "8",
         "9",
-        "10",
+        # "10",
         "11",
-        "12",
-        "13",
+        # "12",
+        # "13",
     ]
 
     def get_numbers(self, img_bytes: bytes) -> List[str]:
@@ -57,7 +57,11 @@ class RecognizeService:
     ):
         number = ""
         for c in characters:
-            number += self.run_ocr(c, 10)
+            recognized_character = self.run_ocr(c, 10)
+            if len(recognized_character) != 1:
+                recognized_character = "?"
+
+            number += recognized_character
 
         return number
 

@@ -5,9 +5,10 @@ services:
       context: .
       target: dev
     ports: 
-      - "5002:5000"
+      - "5004:5000"
     volumes:
       - ./src:/src/src
       - ./img:/img
+      - ./numbers:/numbers
     environment:
       - PYTHONUNBUFFERED=1
