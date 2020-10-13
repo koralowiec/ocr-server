@@ -20,7 +20,7 @@ def process_image_raw(
         characters_in_one_image,
         characters_in_one_image_bordered,
         roi,
-    ) = ImagePreprocessingService.get_separate_characters_from_image(file)
+    ) = ImagePreprocessingService.get_images_with_characters(file)
     number_from_separate_chars = recognize_service.get_numbers_from_separate_characters(
         characters
     )
@@ -54,7 +54,7 @@ def process_image_base64(
         characters_in_one_image,
         characters_in_one_image_bordered,
         roi,
-    ) = ImagePreprocessingService.get_separate_characters_from_image(file)
+    ) = ImagePreprocessingService.get_images_with_characters(file)
     number_from_separate_chars = recognize_service.get_numbers_from_separate_characters(
         characters
     )

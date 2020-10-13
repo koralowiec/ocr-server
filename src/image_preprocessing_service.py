@@ -11,13 +11,20 @@ class ImagePreprocessingService:
     white_color = [255, 255, 255]
 
     @classmethod
-    def get_separate_characters_from_image(cls, img_bytes: bytes):
-        image_org = cls.from_bytes_to_image(img_bytes)
-        image = cls.prepare_for_segmentation(image_org)
-        cont = cls.get_contours(image)
-        characters = cls.get_rects(cont, image_org)
+    def get_images_with_characters(cls, img_bytes: bytes):
+        image = cls.from_bytes_to_image(img_bytes)
+        cls.save_image(image, filename_prefix="org")
 
-        cls.save_images(characters)
+        contours = cls.prepare_for_roi_from_biggest_countour(image)
+        roi, boundary_rectangle = cls.get_roi_from_the_biggest_countour(
+            image, contours
+        )
+        cls.save_image(roi, filename_prefix="roi")
+
+        image_for_segmentation = cls.prepare_for_segmentation(roi)
+        cont = cls.get_contours(image_for_segmentation)
+        characters = cls.get_rects(cont, roi)
+        cls.save_images(characters, filename_prefix="cropped")
 
         concatenated_characters = cls.concatenate_characters(characters)
         cls.save_image(concatenated_characters, filename_prefix="conc")
@@ -32,14 +39,9 @@ class ImagePreprocessingService:
             cv2.BORDER_CONSTANT,
             value=cls.white_color,
         )
-        cls.save_image(image_org, filename_prefix="org")
         cls.save_image(
             concatenated_characters_bordered, filename_prefix="conc-border"
         )
-
-        contours = cls.prepare_for_roi_from_biggest_countour(image_org)
-        roi = cls.get_roi_from_the_biggest_countour(image_org, contours)
-        cls.save_image(roi, filename_prefix="roi")
 
         return (
             characters,
@@ -128,6 +130,10 @@ class ImagePreprocessingService:
         x_central = x1 + w1 / 2
         y_central = y1 + h1 / 2
 
+        print("1:", rectangle1)
+        print("2:", rectangle2)
+        print(x_central, y_central)
+
         return (
             x2 < x_central
             and x_central < x2 + w2
@@ -136,9 +142,7 @@ class ImagePreprocessingService:
         )
 
     @classmethod
-    def get_rects(
-        cls, cont, img: np.ndarray, boundary_rect: Optional[Tuple[int]] = None
-    ):
+    def get_rects(cls, cont, img: np.ndarray):
         cropped_characters: List[np.ndarray] = []
         img_height = img.shape[0]
         img_width = img.shape[1]
@@ -152,57 +156,62 @@ class ImagePreprocessingService:
         filtered_characters = cls.contours_to_characters(filtered_contours, img)
         cls.save_images(filtered_characters, filename_prefix="fil")
 
-        # adaptive bias?
-        bias = 3
+        characters = []
+
         for i in range(len(filtered_contours)):
             character = filtered_contours[i]
             (x, y, w, h) = cv2.boundingRect(character)
 
-            if boundary_rect is not None:
-                if cls.is_rectangle1_in_rectangle2((x, y, w, h), boundary_rect):
-                    continue
-
-            if i > 0:
-                prev_character = filtered_contours[i - 1]
+            cropped_characters_length = len(cropped_characters)
+            if cropped_characters_length > 0:
+                index = cropped_characters[cropped_characters_length - 1][1]
+                prev_character = filtered_contours[index]
                 prev_rect = cv2.boundingRect(prev_character)
 
                 if cls.is_rectangle1_in_rectangle2((x, y, w, h), prev_rect):
                     continue
 
-            y_1 = 0 if y - bias < 0 else y - bias
-            y_2 = img_height if y + h + bias > img_height else y + h + bias
-            x_1 = 0 if x - bias < 0 else x - bias
-            x_2 = img_width if x + w + bias > img_width else x + w + bias
+            curr_num = (x, y, w, h)
+            entry = (curr_num, i)
+            characters.append(entry)
+
+        characters = [c[0] for c in characters]
+
+        heights = [c[3] for c in characters]
+        height_mode = mode(heights)
+        widths = [c[2] for c in characters]
+        width_mode = mode(widths)
+
+        height_factor_min = 0.9 * height_mode
+        height_factor_max = 1.1 * height_mode
+        cropped_characters_filtered = list(
+            filter(
+                lambda c: c[3] > height_factor_min and c[3] < height_factor_max,
+                characters,
+            ),
+        )
+
+        print(
+            "Number of filtered cropped_characters: ",
+            len(cropped_characters_filtered),
+        )
+
+        bias_h = int(0.1 * height_mode)
+        bias_w = int(0.15 * width_mode)
+        for cords in cropped_characters_filtered:
+            (x, y, w, h) = cords
+
+            y_1 = 0 if y - bias_h < 0 else y - bias_h
+            y_2 = img_height if y + h + bias_h > img_height else y + h + bias_h
+            x_1 = 0 if x - bias_w < 0 else x - bias_w
+            x_2 = img_width if x + w + bias_w > img_width else x + w + bias_w
 
             curr_num = img[y_1:y_2, x_1:x_2]
             cropped_characters.append(curr_num)
 
-        cls.save_images(cropped_characters, filename_prefix="cropped")
-
-        heights = [character.shape[0] for character in cropped_characters]
-
-        height_mode = mode(heights)
-        height_median = median(heights)
-
-        height_factor_min = 0.9 * height_mode
-        height_factor_max = 1.1 * height_mode
-        print(heights)
-        print(height_factor_min)
-        crop_characters_filtered = list(
-            filter(
-                lambda character: character.shape[0] > height_factor_min
-                and character.shape[0] < height_factor_max,
-                cropped_characters,
-            ),
-        )
-
         print("Number of cropped_characters: ", len(cropped_characters))
-        print(
-            "Number of filtered cropped_characters: ",
-            len(crop_characters_filtered),
-        )
 
-        return crop_characters_filtered
+        return cropped_characters
 
     @staticmethod
     def concatenate_characters(characters: List[np.ndarray]) -> np.ndarray:
@@ -226,11 +235,14 @@ class ImagePreprocessingService:
         return cnts[0]
 
     @classmethod
-    def get_roi_from_the_biggest_countour(cls, image, contours):
+    def get_roi_from_the_biggest_countour(
+        cls, image, contours
+    ) -> Tuple[np.ndarray, Tuple[int]]:
         countour = cls.get_the_biggest_contour(contours)
-        (x, y, w, h) = cv2.boundingRect(countour)
+        rect = cv2.boundingRect(countour)
+        (x, y, w, h) = rect
         result = image[y : y + h, x : x + w]
-        return result
+        return result, rect
 
     @classmethod
     def prepare_for_roi_from_biggest_countour(cls, image):
