@@ -8,12 +8,12 @@ class ImagePreprocessingService:
     min_height_to_width_ratio: int = 1
     max_height_to_width_ratio: int = 10
     min_rect_height_to_image_height_ratio: float = 0.2
+    white_color = [255, 255, 255]
 
     @classmethod
     def get_separate_characters_from_image(cls, img_bytes: bytes):
         image_org = cls.from_bytes_to_image(img_bytes)
         image = cls.prepare_for_segmentation(image_org)
-        print("Type:", type(image))
         cont = cls.get_contours(image)
         characters = cls.get_rects(cont, image_org)
 
@@ -22,24 +22,30 @@ class ImagePreprocessingService:
         concatenated_characters = cls.concatenate_characters(characters)
         cls.save_image(concatenated_characters, filename_prefix="conc")
 
-        white = [255, 255, 255]
+        border_size = 3
         concatenated_characters_bordered = cv2.copyMakeBorder(
             concatenated_characters,
-            3,
-            3,
-            3,
-            3,
+            border_size,
+            border_size,
+            border_size,
+            border_size,
             cv2.BORDER_CONSTANT,
-            value=white,
+            value=cls.white_color,
         )
+        cls.save_image(image_org, filename_prefix="org")
         cls.save_image(
             concatenated_characters_bordered, filename_prefix="conc-border"
         )
+
+        contours = cls.prepare_for_roi_from_biggest_countour(image_org)
+        roi = cls.get_roi_from_the_biggest_countour(image_org, contours)
+        cls.save_image(roi, filename_prefix="roi")
 
         return (
             characters,
             concatenated_characters,
             concatenated_characters_bordered,
+            roi,
         )
 
     @classmethod
@@ -132,16 +138,12 @@ class ImagePreprocessingService:
             character = filtered_contours[i]
             (x, y, w, h) = cv2.boundingRect(character)
 
-            print(i, (x, y, w, h))
-
             if i > 0:
                 prev_character = filtered_contours[i - 1]
                 (x_p, y_p, w_p, h_p) = cv2.boundingRect(prev_character)
 
                 x_central = x + w / 2
                 y_central = y + h / 2
-
-                print(i, x_central, y_central)
 
                 if (
                     x_p < x_central
@@ -200,34 +202,26 @@ class ImagePreprocessingService:
 
         return cv2.hconcat(resized_characters)
 
-    @classmethod
-    def get_cropped_image_from_countours(cls):
-        pass
+    @staticmethod
+    def get_the_biggest_contour(contours):
+        cnts = sorted(contours, key=cv2.contourArea, reverse=True)
+        return cnts[0]
 
     @classmethod
-    def crop_image_using_contours(cls, cont, img: np.ndarray):
-        img_height = img.shape[0]
-        img_width = img.shape[1]
+    def get_roi_from_the_biggest_countour(cls, image, contours):
+        countour = cls.get_the_biggest_contour(contours)
+        (x, y, w, h) = cv2.boundingRect(countour)
+        result = image[y : y + h, x : x + w]
+        return result
 
-        x_min_area = 0
-        x_max_area = img_width
+    @classmethod
+    def prepare_for_roi_from_biggest_countour(cls, image):
+        gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+        kernel = np.ones((5, 5), np.float32) / 15
+        filtered = cv2.filter2D(gray, -1, kernel)
+        ret, thresh = cv2.threshold(filtered, 250, 255, cv2.THRESH_OTSU)
 
-        sorted_contours = cls.sort_contours(cont)
-        filtered_contours = cls.filter_contours_by_ratios(
-            sorted_contours, img_height
+        contours, _ = cv2.findContours(
+            thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE
         )
-
-        bias = 3
-
-        (x, _, _, _) = cv2.boundingRect(filtered_contours[0])
-        if x - bias > x_min_area:
-            x_min_area = x - bias
-
-        (x, _, _, _) = cv2.boundingRect(
-            filtered_contours[len(filtered_contours) - 1]
-        )
-        if x + bias < x_max_area:
-            x_max_area = x + bias
-
-        return img[:, x_min_area, x_max_area]
-
+        return contours

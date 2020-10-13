@@ -19,42 +19,23 @@ def process_image_raw(
         characters,
         characters_in_one_image,
         characters_in_one_image_bordered,
+        roi,
     ) = ImagePreprocessingService.get_separate_characters_from_image(file)
     number_from_separate_chars = recognize_service.get_numbers_from_separate_characters(
         characters
     )
-    number_from_characters_one_image = recognize_service.run_ocr(
-        characters_in_one_image, 7
+
+    numbers_characters_one_image = recognize_service.get_numbers(
+        characters_in_one_image
     )
-    print("7", number_from_characters_one_image)
-    number_from_characters_one_image = recognize_service.run_ocr(
-        characters_in_one_image, 8
+    print(numbers_characters_one_image)
+    numbers_characters_one_image_bordered = recognize_service.get_numbers(
+        characters_in_one_image_bordered
     )
-    print("8", number_from_characters_one_image)
-    number_from_characters_one_image = recognize_service.run_ocr(
-        characters_in_one_image, 9
-    )
-    print("9", number_from_characters_one_image)
-    number_from_characters_one_image = recognize_service.run_ocr(
-        characters_in_one_image, 11
-    )
-    print("11", number_from_characters_one_image)
-    number_from_characters_one_image = recognize_service.run_ocr(
-        characters_in_one_image_bordered, 7
-    )
-    print("7", number_from_characters_one_image)
-    number_from_characters_one_image = recognize_service.run_ocr(
-        characters_in_one_image_bordered, 8
-    )
-    print("8", number_from_characters_one_image)
-    number_from_characters_one_image = recognize_service.run_ocr(
-        characters_in_one_image_bordered, 9
-    )
-    print("9", number_from_characters_one_image)
-    number_from_characters_one_image = recognize_service.run_ocr(
-        characters_in_one_image_bordered, 11
-    )
-    print("11", number_from_characters_one_image)
+    print(numbers_characters_one_image_bordered)
+    print("roi")
+    numbers_roi = recognize_service.get_numbers(roi)
+    print(numbers_roi)
 
     numbers_from_ocr = recognize_service.get_numbers(file)
 
@@ -72,42 +53,22 @@ def process_image_base64(
         characters,
         characters_in_one_image,
         characters_in_one_image_bordered,
+        roi,
     ) = ImagePreprocessingService.get_separate_characters_from_image(file)
     number_from_separate_chars = recognize_service.get_numbers_from_separate_characters(
         characters
     )
-    number_from_characters_one_image = recognize_service.run_ocr(
-        characters_in_one_image, 7
+    numbers_characters_one_image = recognize_service.get_numbers(
+        characters_in_one_image
     )
-    print("7", number_from_characters_one_image)
-    number_from_characters_one_image = recognize_service.run_ocr(
-        characters_in_one_image, 8
+    print(numbers_characters_one_image)
+    numbers_characters_one_image_bordered = recognize_service.get_numbers(
+        characters_in_one_image_bordered
     )
-    print("8", number_from_characters_one_image)
-    number_from_characters_one_image = recognize_service.run_ocr(
-        characters_in_one_image, 9
-    )
-    print("9", number_from_characters_one_image)
-    number_from_characters_one_image = recognize_service.run_ocr(
-        characters_in_one_image, 11
-    )
-    print("11", number_from_characters_one_image)
-    number_from_characters_one_image = recognize_service.run_ocr(
-        characters_in_one_image_bordered, 7
-    )
-    print("7", number_from_characters_one_image)
-    number_from_characters_one_image = recognize_service.run_ocr(
-        characters_in_one_image_bordered, 8
-    )
-    print("8", number_from_characters_one_image)
-    number_from_characters_one_image = recognize_service.run_ocr(
-        characters_in_one_image_bordered, 9
-    )
-    print("9", number_from_characters_one_image)
-    number_from_characters_one_image = recognize_service.run_ocr(
-        characters_in_one_image_bordered, 11
-    )
-    print("11", number_from_characters_one_image)
+    print(numbers_characters_one_image_bordered)
+    print("roi")
+    numbers_roi = recognize_service.get_numbers(roi)
+    print(numbers_roi)
 
     numbers_from_ocr = recognize_service.get_numbers(file)
 
