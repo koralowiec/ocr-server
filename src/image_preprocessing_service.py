@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from typing import List
+from typing import List, Optional, Tuple
 from statistics import mode, median
 
 
@@ -117,8 +117,28 @@ class ImagePreprocessingService:
         for i in range(len(images)):
             cv2.imwrite(f"/numbers/{filename_prefix}{i}.jpeg", images[i])
 
+    @staticmethod
+    def is_rectangle1_in_rectangle2(
+        rectangle1: Tuple[int], rectangle2: Tuple[int]
+    ) -> bool:
+        (x1, y1, w1, h1) = rectangle1
+        (x2, y2, w2, h2) = rectangle2
+
+        # centre of 1st rectangle
+        x_central = x1 + w1 / 2
+        y_central = y1 + h1 / 2
+
+        return (
+            x2 < x_central
+            and x_central < x2 + w2
+            and y2 < y_central
+            and y_central < y2 + h2
+        )
+
     @classmethod
-    def get_rects(cls, cont, img: np.ndarray):
+    def get_rects(
+        cls, cont, img: np.ndarray, boundary_rect: Optional[Tuple[int]] = None
+    ):
         cropped_characters: List[np.ndarray] = []
         img_height = img.shape[0]
         img_width = img.shape[1]
@@ -138,19 +158,15 @@ class ImagePreprocessingService:
             character = filtered_contours[i]
             (x, y, w, h) = cv2.boundingRect(character)
 
+            if boundary_rect is not None:
+                if cls.is_rectangle1_in_rectangle2((x, y, w, h), boundary_rect):
+                    continue
+
             if i > 0:
                 prev_character = filtered_contours[i - 1]
-                (x_p, y_p, w_p, h_p) = cv2.boundingRect(prev_character)
+                prev_rect = cv2.boundingRect(prev_character)
 
-                x_central = x + w / 2
-                y_central = y + h / 2
-
-                if (
-                    x_p < x_central
-                    and x_central < x_p + w_p
-                    and y_p < y_central
-                    and y_central < y_p + h_p
-                ):
+                if cls.is_rectangle1_in_rectangle2((x, y, w, h), prev_rect):
                     continue
 
             y_1 = 0 if y - bias < 0 else y - bias
@@ -168,12 +184,14 @@ class ImagePreprocessingService:
         height_mode = mode(heights)
         height_median = median(heights)
 
-        height_factor = 0.9 * height_mode
+        height_factor_min = 0.9 * height_mode
+        height_factor_max = 1.1 * height_mode
         print(heights)
-        print(height_factor)
+        print(height_factor_min)
         crop_characters_filtered = list(
             filter(
-                lambda character: character.shape[0] > height_factor,
+                lambda character: character.shape[0] > height_factor_min
+                and character.shape[0] < height_factor_max,
                 cropped_characters,
             ),
         )
