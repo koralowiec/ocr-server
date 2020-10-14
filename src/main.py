@@ -1,9 +1,9 @@
 from fastapi import FastAPI, File, Depends
 from pydantic import BaseModel, Field
 import base64
+import time
 
 from recognize_service import RecognizeService
-from image_preprocessing_service import ImagePreprocessingService
 
 app = FastAPI()
 
@@ -15,67 +15,25 @@ class Base64Body(BaseModel):
 def process_image_raw(
     file: bytes = File(...), recognize_service: RecognizeService = Depends(),
 ):
-    (
-        characters,
-        characters_in_one_image,
-        characters_in_one_image_bordered,
-        roi,
-    ) = ImagePreprocessingService.get_images_with_characters(file)
-    number_from_separate_chars = recognize_service.get_numbers_from_separate_characters(
-        characters
-    )
+    start_time = time.time()
+    lp_number = recognize_service.get_license_plate_number(file)
+    end_time = time.time()
+    print("Time: ", end_time - start_time)
 
-    numbers_characters_one_image = recognize_service.get_numbers(
-        characters_in_one_image
-    )
-    print(numbers_characters_one_image)
-    numbers_characters_one_image_bordered = recognize_service.get_numbers(
-        characters_in_one_image_bordered
-    )
-    print(numbers_characters_one_image_bordered)
-    print("roi")
-    numbers_roi = recognize_service.get_numbers(roi)
-    print(numbers_roi)
-
-    numbers_from_ocr = recognize_service.get_numbers(file)
-
-    return {
-        "numberFromSeparateChars": number_from_separate_chars,
-        "numbersFromOCR": numbers_from_ocr,
-    }
+    return {"licensePlateNumber": lp_number}
 
 
 def process_image_base64(
     b64: Base64Body, recognize_service: RecognizeService = Depends(),
 ):
     file = base64.b64decode(b64.b64Encoded)
-    (
-        characters,
-        characters_in_one_image,
-        characters_in_one_image_bordered,
-        roi,
-    ) = ImagePreprocessingService.get_images_with_characters(file)
-    number_from_separate_chars = recognize_service.get_numbers_from_separate_characters(
-        characters
-    )
-    numbers_characters_one_image = recognize_service.get_numbers(
-        characters_in_one_image
-    )
-    print(numbers_characters_one_image)
-    numbers_characters_one_image_bordered = recognize_service.get_numbers(
-        characters_in_one_image_bordered
-    )
-    print(numbers_characters_one_image_bordered)
-    print("roi")
-    numbers_roi = recognize_service.get_numbers(roi)
-    print(numbers_roi)
 
-    numbers_from_ocr = recognize_service.get_numbers(file)
+    start_time = time.time()
+    lp_number = recognize_service.get_license_plate_number(file)
+    end_time = time.time()
+    print("Time: ", end_time - start_time)
 
-    return {
-        "numberFromSeparateChars": number_from_separate_chars,
-        "numbersFromOCR": numbers_from_ocr,
-    }
+    return {"licensePlateNumber": lp_number}
 
 
 @app.post("/ocr/base64")

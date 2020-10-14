@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
-from typing import List, Optional, Tuple
-from statistics import mode, median
+from typing import List, Tuple
+from statistics import mode
 
 
 class ImagePreprocessingService:
@@ -11,23 +11,17 @@ class ImagePreprocessingService:
     white_color = [255, 255, 255]
 
     @classmethod
-    def get_images_with_characters(cls, img_bytes: bytes):
-        image = cls.from_bytes_to_image(img_bytes)
-        cls.save_image(image, filename_prefix="org")
-
+    def get_images_with_characters(cls, image: np.ndarray):
         contours = cls.prepare_for_roi_from_biggest_countour(image)
         roi, boundary_rectangle = cls.get_roi_from_the_biggest_countour(
             image, contours
         )
-        cls.save_image(roi, filename_prefix="roi")
 
         image_for_segmentation = cls.prepare_for_segmentation(roi)
         cont = cls.get_contours(image_for_segmentation)
         characters = cls.get_rects(cont, roi)
-        cls.save_images(characters, filename_prefix="cropped")
 
         concatenated_characters = cls.concatenate_characters(characters)
-        cls.save_image(concatenated_characters, filename_prefix="conc")
 
         border_size = 3
         concatenated_characters_bordered = cv2.copyMakeBorder(
@@ -38,9 +32,6 @@ class ImagePreprocessingService:
             border_size,
             cv2.BORDER_CONSTANT,
             value=cls.white_color,
-        )
-        cls.save_image(
-            concatenated_characters_bordered, filename_prefix="conc-border"
         )
 
         return (

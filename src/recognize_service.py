@@ -2,32 +2,78 @@ from typing import List, Union
 import pytesseract
 import numpy as np
 import cv2
+from statistics import mode
+
+from image_preprocessing_service import ImagePreprocessingService
 
 
 class RecognizeService:
     characters: str = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     bad_chars: List[str] = ["\n\x0c", "\x0c", "\n"]
     psms: List[str] = [
-        # "1",
-        # "2",
-        # "3",
-        # "4",
-        # "5",
-        # "6",
         "7",
         "8",
         "9",
-        # "10",
         "11",
-        # "12",
-        # "13",
     ]
 
-    def get_numbers(self, image: Union[bytes, np.ndarray]) -> List[str]:
+    def get_license_plate_number(self, image: Union[bytes, np.ndarray]) -> str:
         if isinstance(image, bytes):
-            np_img = np.frombuffer(image, dtype=np.uint8)
-            image = cv2.imdecode(np_img, cv2.IMREAD_UNCHANGED)
+            image = ImagePreprocessingService.from_bytes_to_image(image)
 
+        ImagePreprocessingService.save_image(image, filename_prefix="source")
+
+        (
+            characters,
+            characters_in_one_image,
+            characters_in_one_image_bordered,
+            roi,
+        ) = ImagePreprocessingService.get_images_with_characters(image)
+
+        ImagePreprocessingService.save_images(
+            characters, filename_prefix="character"
+        )
+        ImagePreprocessingService.save_image(
+            characters_in_one_image, filename_prefix="concatenated"
+        )
+        ImagePreprocessingService.save_image(
+            characters_in_one_image_bordered,
+            filename_prefix="concatenated-bordered",
+        )
+        ImagePreprocessingService.save_image(roi, filename_prefix="roi")
+
+        potential_length_of_lp_number = len(characters)
+
+        lp_numbers_from_concatenated_image = self.get_numbers(
+            characters_in_one_image
+        )
+        lp_numbers_from_bordered_image = self.get_numbers(
+            characters_in_one_image_bordered
+        )
+
+        lp_numbers = [
+            *lp_numbers_from_concatenated_image,
+            *lp_numbers_from_bordered_image,
+        ]
+
+        print(lp_numbers)
+
+        lp_numbers = [n for n in lp_numbers if len(n) > 0]
+        lp_numbers_with_potentialy_correct_length = [
+            n for n in lp_numbers if len(n) == potential_length_of_lp_number
+        ]
+        lp_numbers_with_different_length = [
+            n
+            for n in lp_numbers
+            if n not in lp_numbers_with_potentialy_correct_length
+        ]
+
+        print(lp_numbers_with_potentialy_correct_length)
+        print(lp_numbers_with_different_length)
+
+        return mode(lp_numbers_with_potentialy_correct_length)
+
+    def get_numbers(self, image: np.ndarray) -> List[str]:
         numbers = []
         for psm in self.psms:
             numbers.append(self.run_ocr(image, psm))
