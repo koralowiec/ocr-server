@@ -1,7 +1,6 @@
-from typing import List, Union
+from typing import List, Union, Tuple
 import pytesseract
 import numpy as np
-import cv2
 from statistics import mode
 
 from image_preprocessing_service import ImagePreprocessingService
@@ -17,11 +16,18 @@ class RecognizeService:
         "11",
     ]
 
-    def get_license_plate_number(self, image: Union[bytes, np.ndarray]) -> str:
+    def get_license_plate_number(
+        self, image: Union[bytes, np.ndarray]
+    ) -> Tuple[str, dict]:
         if isinstance(image, bytes):
             image = ImagePreprocessingService.from_bytes_to_image(image)
 
+        image_paths: dict = {}
+
         ImagePreprocessingService.save_image(image, filename_prefix="source")
+        image_paths["source"] = ImagePreprocessingService.save_image_minio(
+            image, filename_sufix="source"
+        )
 
         (
             characters,
@@ -31,16 +37,24 @@ class RecognizeService:
         ) = ImagePreprocessingService.get_images_with_characters(image)
 
         ImagePreprocessingService.save_images(
-            characters, filename_prefix="character"
+            characters, filename_prefix="characters"
         )
         ImagePreprocessingService.save_image(
             characters_in_one_image, filename_prefix="concatenated"
+        )
+        image_paths[
+            "concatenated"
+        ] = ImagePreprocessingService.save_image_minio(
+            characters_in_one_image, filename_sufix="concatenated"
         )
         ImagePreprocessingService.save_image(
             characters_in_one_image_bordered,
             filename_prefix="concatenated-bordered",
         )
         ImagePreprocessingService.save_image(roi, filename_prefix="roi")
+        image_paths["roi"] = ImagePreprocessingService.save_image_minio(
+            roi, filename_sufix="roi"
+        )
 
         potential_length_of_lp_number = len(characters)
 
@@ -71,7 +85,7 @@ class RecognizeService:
         print(lp_numbers_with_potentialy_correct_length)
         print(lp_numbers_with_different_length)
 
-        return mode(lp_numbers_with_potentialy_correct_length)
+        return (mode(lp_numbers_with_potentialy_correct_length), image_paths)
 
     def get_numbers(self, image: np.ndarray) -> List[str]:
         numbers = []

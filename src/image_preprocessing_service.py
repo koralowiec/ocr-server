@@ -1,7 +1,12 @@
 import cv2
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, Union
 from statistics import mode
+import io
+import uuid
+from minio.error import ResponseError
+
+from minio_setup import minioClient, bucket_name
 
 
 class ImagePreprocessingService:
@@ -98,6 +103,31 @@ class ImagePreprocessingService:
             characters.append(character)
 
         return characters
+
+    @staticmethod
+    def save_image_minio(
+        image: Union[bytes, np.ndarray], filename_sufix: str = ""
+    ) -> str:
+        if isinstance(image, np.ndarray):
+            success, encoded_image = cv2.imencode(".jpeg", image)
+            image = encoded_image.tobytes()
+
+        uid = uuid.uuid1()
+        if filename_sufix != "":
+            filename_sufix = f"-{filename_sufix}"
+        filename = f"{uid}{filename_sufix}.jpeg"
+        path = f"{bucket_name}/{filename}"
+
+        try:
+            with io.BytesIO(image) as data:
+                x = minioClient.put_object(
+                    bucket_name, filename, data, len(image)
+                )
+                print(x)
+        except ResponseError as e:
+            print(e)
+
+        return path
 
     @staticmethod
     def save_image(image: np.ndarray, filename_prefix: str = ""):

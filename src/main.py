@@ -16,11 +16,11 @@ def process_image_raw(
     file: bytes = File(...), recognize_service: RecognizeService = Depends(),
 ):
     start_time = time.time()
-    lp_number = recognize_service.get_license_plate_number(file)
+    lp_number, links = recognize_service.get_license_plate_number(file)
     end_time = time.time()
     print("Time: ", end_time - start_time)
 
-    return {"licensePlateNumber": lp_number}
+    return {"licensePlateNumber": lp_number, "links": links}
 
 
 def process_image_base64(
@@ -29,11 +29,11 @@ def process_image_base64(
     file = base64.b64decode(b64.b64Encoded)
 
     start_time = time.time()
-    lp_number = recognize_service.get_license_plate_number(file)
+    lp_number, links = recognize_service.get_license_plate_number(file)
     end_time = time.time()
     print("Time: ", end_time - start_time)
 
-    return {"licensePlateNumber": lp_number}
+    return {"licensePlateNumber": lp_number, "links": links}
 
 
 @app.post("/ocr/base64")
