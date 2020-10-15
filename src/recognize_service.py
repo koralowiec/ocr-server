@@ -24,9 +24,6 @@ class RecognizeService:
             image = ImagePreprocessingService.from_bytes_to_image(image)
 
         ImagePreprocessingService.save_image(image, filename_prefix="source")
-        image_paths["source"] = ImagePreprocessingService.save_image_minio(
-            image, filename_sufix="source"
-        )
 
         images = ImagePreprocessingService.get_images_with_characters(image)
         characters = images["characters"]
@@ -37,6 +34,9 @@ class RecognizeService:
         ImagePreprocessingService.save_images_with_key_as_prefix(images)
 
         image_paths: dict = {}
+        image_paths["source"] = ImagePreprocessingService.save_image_minio(
+            image, filename_sufix="source"
+        )
         image_paths[
             "concatenated"
         ] = ImagePreprocessingService.save_image_minio(

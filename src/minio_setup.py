@@ -1,4 +1,5 @@
 import json
+import os
 from minio import Minio
 from minio.error import (
     ResponseError,
@@ -6,17 +7,23 @@ from minio.error import (
     BucketAlreadyExists,
 )
 
-minioClient = Minio(
-    "minio:9000",
-    access_key="AKIAIOSFODNN7EXAMPLE",
-    secret_key="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+minio_host_env = os.environ.get("MINIO_HOST")
+minio_host = minio_host_env if minio_host_env is not None else "minio:9000"
+
+minio_access_key = os.environ.get("MINIO_ACCESS_KEY")
+minio_secret_key = os.environ.get("MINIO_SECRET_KEY")
+
+minio_client = Minio(
+    minio_host,
+    access_key=minio_access_key,
+    secret_key=minio_secret_key,
     secure=False,
 )
 
 bucket_name = "ocr-server"
 
 try:
-    minioClient.make_bucket(bucket_name)
+    minio_client.make_bucket(bucket_name)
 except BucketAlreadyOwnedByYou:
     pass
 except BucketAlreadyExists:
@@ -66,7 +73,7 @@ try:
             },
         ],
     }
-    minioClient.set_bucket_policy(bucket_name, json.dumps(policy_read_write))
+    minio_client.set_bucket_policy(bucket_name, json.dumps(policy_read_write))
 
 except ResponseError as err:
     print(err)

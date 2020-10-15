@@ -12,11 +12,18 @@ services:
       - ./numbers:/numbers
     environment:
       - PYTHONUNBUFFERED=1
+    env_file: 
+      - .minio.env
+    depends_on: 
+      minio:
+        condition: service_healthy
   minio:
     image: minio/minio
     ports: 
       - 9000:9000
-    environment: 
-      - MINIO_ACCESS_KEY=AKIAIOSFODNN7EXAMPLE
-      - MINIO_SECRET_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+    env_file: 
+      - .minio.env
     command: server /data
+    healthcheck:
+      test: curl -f http://localhost:9000/minio/health/live || exit 1
+      interval: 5s

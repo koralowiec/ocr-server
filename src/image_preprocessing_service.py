@@ -6,7 +6,7 @@ import io
 import uuid
 from minio.error import ResponseError
 
-from minio_setup import minioClient, bucket_name
+from minio_setup import minio_client, bucket_name
 
 
 class ImagePreprocessingService:
@@ -125,10 +125,9 @@ class ImagePreprocessingService:
 
         try:
             with io.BytesIO(image) as data:
-                x = minioClient.put_object(
+                _ = minio_client.put_object(
                     bucket_name, filename, data, len(image)
                 )
-                print(x)
         except ResponseError as e:
             print(e)
 
@@ -296,6 +295,5 @@ class ImagePreprocessingService:
         height = int(image.shape[0] * scale)
         dim = (width, height)
         resized = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
-        print(dim)
         return resized
 
