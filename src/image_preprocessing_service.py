@@ -17,10 +17,12 @@ class ImagePreprocessingService:
 
     @classmethod
     def get_images_with_characters(cls, image: np.ndarray):
-        contours = cls.prepare_for_roi_from_biggest_countour(image)
+        contours, thres = cls.prepare_for_roi_from_biggest_countour(image)
         roi, boundary_rectangle = cls.get_roi_from_the_biggest_countour(
             image, contours
         )
+
+        roi = cls.resize_image(roi)
 
         image_for_segmentation = cls.prepare_for_segmentation(roi)
         cont = cls.get_contours(image_for_segmentation)
@@ -39,12 +41,15 @@ class ImagePreprocessingService:
             value=cls.white_color,
         )
 
-        return (
-            characters,
-            concatenated_characters,
-            concatenated_characters_bordered,
-            roi,
-        )
+        images = {}
+        images["characters"] = characters
+        images["concatenated"] = concatenated_characters
+        images["concatenated_bordered"] = concatenated_characters_bordered
+        images["roi"] = roi
+        images["binary_seg"] = image_for_segmentation
+        images["thresh-roi"] = thres
+
+        return images
 
     @classmethod
     def from_bytes_to_image(cls, img_bytes: bytes):
@@ -134,11 +139,23 @@ class ImagePreprocessingService:
         cv2.imwrite(f"/img/{filename_prefix}.jpeg", image)
 
     @staticmethod
-    def save_images(images: List[np.ndarray], filename_prefix: str = ""):
+    def save_images(
+        images: List[np.ndarray], filename_prefix: str = "", dir="/numbers"
+    ):
         print("Number of images: ", len(images))
 
         for i in range(len(images)):
-            cv2.imwrite(f"/numbers/{filename_prefix}{i}.jpeg", images[i])
+            cv2.imwrite(f"{dir}/{filename_prefix}{i}.jpeg", images[i])
+
+    @staticmethod
+    def save_images_with_key_as_prefix(images: dict):
+        for key, image in images.items():
+            if isinstance(image, list):
+                ImagePreprocessingService.save_images(
+                    image, filename_prefix=key, dir="/img/numbers"
+                )
+            else:
+                ImagePreprocessingService.save_image(image, filename_prefix=key)
 
     @staticmethod
     def is_rectangle1_in_rectangle2(
@@ -150,10 +167,6 @@ class ImagePreprocessingService:
         # centre of 1st rectangle
         x_central = x1 + w1 / 2
         y_central = y1 + h1 / 2
-
-        print("1:", rectangle1)
-        print("2:", rectangle2)
-        print(x_central, y_central)
 
         return (
             x2 < x_central
@@ -275,4 +288,14 @@ class ImagePreprocessingService:
         contours, _ = cv2.findContours(
             thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE
         )
-        return contours
+        return contours, thresh
+
+    @staticmethod
+    def resize_image(image: np.ndarray, scale: float = 4.0):
+        width = int(image.shape[1] * scale)
+        height = int(image.shape[0] * scale)
+        dim = (width, height)
+        resized = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
+        print(dim)
+        return resized
+
