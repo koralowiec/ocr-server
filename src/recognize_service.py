@@ -29,28 +29,15 @@ class RecognizeService:
         characters = images["characters"]
         characters_in_one_image = images["concatenated"]
         characters_in_one_image_bordered = images["concatenated_bordered"]
-        roi = images["roi"]
+        # roi = images["roi"]
 
         ImagePreprocessingService.save_images_with_key_as_prefix(images)
 
-        image_paths: dict = {}
-        image_paths["source"] = ImagePreprocessingService.save_image_minio(
-            image, filename_sufix="source"
-        )
-        image_paths[
-            "concatenated"
-        ] = ImagePreprocessingService.save_image_minio(
-            characters_in_one_image, filename_sufix="concatenated"
-        )
-        image_paths["roi"] = ImagePreprocessingService.save_image_minio(
-            roi, filename_sufix="roi"
-        )
+        image_paths: dict = ImagePreprocessingService.save_images_to_minio(images)
 
         potential_length_of_lp_number = len(characters)
 
-        lp_numbers_from_concatenated_image = self.get_numbers(
-            characters_in_one_image
-        )
+        lp_numbers_from_concatenated_image = self.get_numbers(characters_in_one_image)
         lp_numbers_from_bordered_image = self.get_numbers(
             characters_in_one_image_bordered
         )
@@ -67,20 +54,19 @@ class RecognizeService:
             n for n in lp_numbers if len(n) == potential_length_of_lp_number
         ]
         lp_numbers_with_different_length = [
-            n
-            for n in lp_numbers
-            if n not in lp_numbers_with_potentialy_correct_length
+            n for n in lp_numbers if n not in lp_numbers_with_potentialy_correct_length
         ]
 
         print(
-            "numbers pc length", lp_numbers_with_potentialy_correct_length,
+            "numbers pc length",
+            lp_numbers_with_potentialy_correct_length,
         )
         print("numbers d length", lp_numbers_with_different_length)
 
         if len(lp_numbers_with_potentialy_correct_length) == 0:
-            potential_length_of_lp_number = len(
-                mode(lp_numbers_with_different_length)
-            )
+            if len(lp_numbers_with_different_length) == 0:
+                raise Exception("")
+            potential_length_of_lp_number = len(mode(lp_numbers_with_different_length))
             lp_numbers_with_potentialy_correct_length = [
                 n
                 for n in lp_numbers_with_different_length
@@ -108,15 +94,22 @@ class RecognizeService:
                 if len(ch_set) > 1:
                     print("ch", ch)
                     print("ch set", ch_set)
-                    character = characters[i]
+                    # problem here: len of characters is different than
+                    # potential len of lp number
+                    len_single_character_images = len(characters)
+                    index_for_character_image = (
+                        i
+                        if i < len_single_character_images
+                        else len_single_character_images - 1
+                    )
+
+                    character = characters[index_for_character_image]
                     new_ch = self.run_ocr(character, 10)
                     print("ocr psm 10:", new_ch)
 
                     if new_ch not in ch_set:
                         x = most_common_lp[0][1]
-                        most_common_chars = list(
-                            filter(lambda c: c[1] >= x, ch)
-                        )
+                        most_common_chars = list(filter(lambda c: c[1] >= x, ch))
                         print(most_common_chars)
                         if len(most_common_chars) == 1:
                             new_ch = most_common_chars[0][0]
@@ -131,9 +124,7 @@ class RecognizeService:
 
         return (potential_lp_number, image_paths)
 
-    def change_str_at_index(
-        self, string: str, index: int, change_str: str
-    ) -> str:
+    def change_str_at_index(self, string: str, index: int, change_str: str) -> str:
         return string[:index] + change_str + string[index + 1 :]
 
     def get_numbers(self, image: np.ndarray) -> List[str]:
@@ -144,13 +135,11 @@ class RecognizeService:
         return numbers
 
     def run_ocr(self, image: np.ndarray, psm: int) -> str:
-        tesseract_conf = (
-            f"-c tessedit_char_whitelist={self.characters} --psm {psm}"
-        )
+        tesseract_conf = f"-c tessedit_char_whitelist={self.characters} --psm {psm}"
         number = ""
         try:
             number = pytesseract.image_to_string(image, config=tesseract_conf)
-        except:
+        except Exception:
             print(f"OCR could not recognize number for --psm {psm}")
 
         return self.clean_up_number(number)
@@ -161,9 +150,7 @@ class RecognizeService:
 
         return number
 
-    def get_numbers_from_separate_characters(
-        self, characters: List[np.ndarray]
-    ):
+    def get_numbers_from_separate_characters(self, characters: List[np.ndarray]):
         number = ""
         for c in characters:
             recognized_character = self.run_ocr(c, 10)

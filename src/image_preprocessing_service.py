@@ -13,20 +13,28 @@ class ImagePreprocessingService:
     min_height_to_width_ratio: int = 1
     max_height_to_width_ratio: int = 10
     min_rect_height_to_image_height_ratio: float = 0.2
-    white_color = [255, 255, 255]
+    white_color = (255, 255, 255)
+    green_color = (0, 255, 0)
 
     @classmethod
     def get_images_with_characters(cls, image: np.ndarray):
         contours, thres = cls.prepare_for_roi_from_biggest_countour(image)
-        roi, boundary_rectangle = cls.get_roi_from_the_biggest_countour(
-            image, contours
-        )
+        img_contours_roi = image.copy()
+        cv2.drawContours(img_contours_roi, contours, -1, cls.green_color, 3)
+        roi, boundary_rectangle = cls.get_roi_from_the_biggest_countour(image, contours)
 
         roi = cls.resize_image(roi)
 
         image_for_segmentation = cls.prepare_for_segmentation(roi)
         cont = cls.get_contours(image_for_segmentation)
-        characters = cls.get_rects(cont, roi)
+
+        img_contours_characters = np.zeros_like(roi)
+        for i in range(3):
+            img_contours_characters[:, :, i] = image_for_segmentation
+        cv2.drawContours(img_contours_characters, cont, -1, cls.green_color, 3)
+
+        characters, rects = cls.get_rects(cont, roi)
+        rectangle_characters_image = cls.draw_rectangles_on_image(roi, rects)
 
         concatenated_characters = cls.concatenate_characters(characters)
 
@@ -47,9 +55,28 @@ class ImagePreprocessingService:
         images["concatenated_bordered"] = concatenated_characters_bordered
         images["roi"] = roi
         images["binary_seg"] = image_for_segmentation
-        images["thresh-roi"] = thres
+        images["thresh_roi"] = thres
+        images["countours_roi"] = img_contours_roi
+        images["image_for_segmentation"] = image_for_segmentation
+        images["countours_characters"] = img_contours_characters
+        images["rectangles_characters"] = rectangle_characters_image
 
         return images
+
+    @staticmethod
+    def draw_rectangles_on_image(
+        image: np.ndarray, rectangles: List[Tuple[int, int, int, int]]
+    ):
+        image_with_rectangles = image.copy()
+        for rect in rectangles:
+            cv2.rectangle(
+                image_with_rectangles,
+                (rect[0], rect[1]),
+                (rect[0] + rect[2], rect[1] + rect[3]),
+                ImagePreprocessingService.green_color,
+                2,
+            )
+        return image_with_rectangles
 
     @classmethod
     def from_bytes_to_image(cls, img_bytes: bytes):
@@ -60,9 +87,9 @@ class ImagePreprocessingService:
     def prepare_for_segmentation(cls, img: np.ndarray) -> np.ndarray:
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         blur = cv2.GaussianBlur(gray, (3, 3), 0)
-        binary = cv2.threshold(
-            blur, 150, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
-        )[1]
+        binary = cv2.threshold(blur, 150, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[
+            1
+        ]
 
         return binary
 
@@ -76,9 +103,7 @@ class ImagePreprocessingService:
         i = 0
         boundingBoxes = [cv2.boundingRect(c) for c in cnts]
         (cnts, boundingBoxes) = zip(
-            *sorted(
-                zip(cnts, boundingBoxes), key=lambda b: b[1][i], reverse=reverse
-            )
+            *sorted(zip(cnts, boundingBoxes), key=lambda b: b[1][i], reverse=reverse)
         )
         return cnts
 
@@ -89,11 +114,7 @@ class ImagePreprocessingService:
         for c in cnts:
             (x, y, w, h) = cv2.boundingRect(c)
             ratio = h / w
-            if (
-                cls.min_height_to_width_ratio
-                <= ratio
-                <= cls.max_height_to_width_ratio
-            ):
+            if cls.min_height_to_width_ratio <= ratio <= cls.max_height_to_width_ratio:
                 if h / img_height >= cls.min_rect_height_to_image_height_ratio:
                     filtered_cnts.append(c)
 
@@ -110,9 +131,31 @@ class ImagePreprocessingService:
         return characters
 
     @staticmethod
+    def save_images_to_minio(images: dict):
+        paths = {}
+        for key, image in images.items():
+            if isinstance(image, list):
+                paths_list = {}
+                for i in range(len(image)):
+                    path = ImagePreprocessingService.save_image_minio(
+                        image[i], filename_sufix=f"{key}{i}"
+                    )
+                    paths_list[f"{key}{i}"] = path
+                paths[key] = paths_list
+            else:
+                saved_image_path = ImagePreprocessingService.save_image_minio(
+                    image, key
+                )
+                paths[key] = saved_image_path
+        return paths
+
+    @staticmethod
     def save_image_minio(
         image: Union[bytes, np.ndarray], filename_sufix: str = ""
     ) -> str:
+        if image is None:
+            return ""
+
         if isinstance(image, np.ndarray):
             success, encoded_image = cv2.imencode(".jpeg", image)
             image = encoded_image.tobytes()
@@ -125,9 +168,7 @@ class ImagePreprocessingService:
 
         try:
             with io.BytesIO(image) as data:
-                _ = minio_client.put_object(
-                    bucket_name, filename, data, len(image)
-                )
+                _ = minio_client.put_object(bucket_name, filename, data, len(image))
         except ResponseError as e:
             print(e)
 
@@ -135,7 +176,10 @@ class ImagePreprocessingService:
 
     @staticmethod
     def save_image(image: np.ndarray, filename_prefix: str = ""):
-        cv2.imwrite(f"/img/{filename_prefix}.jpeg", image)
+        try:
+            cv2.imwrite(f"/img/{filename_prefix}.jpeg", image)
+        except Exception as e:
+            print(e)
 
     @staticmethod
     def save_images(
@@ -183,9 +227,7 @@ class ImagePreprocessingService:
         sorted_contours = cls.sort_contours(cont)
         sorted_characters = cls.contours_to_characters(sorted_contours, img)
         cls.save_images(sorted_characters, filename_prefix="sort")
-        filtered_contours = cls.filter_contours_by_ratios(
-            sorted_contours, img_height
-        )
+        filtered_contours = cls.filter_contours_by_ratios(sorted_contours, img_height)
         filtered_characters = cls.contours_to_characters(filtered_contours, img)
         cls.save_images(filtered_characters, filename_prefix="fil")
 
@@ -244,7 +286,7 @@ class ImagePreprocessingService:
 
         print("Number of cropped_characters: ", len(cropped_characters))
 
-        return cropped_characters
+        return cropped_characters, cropped_characters_filtered
 
     @staticmethod
     def concatenate_characters(characters: List[np.ndarray]) -> np.ndarray:
@@ -282,11 +324,9 @@ class ImagePreprocessingService:
         gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         kernel = np.ones((5, 5), np.float32) / 15
         filtered = cv2.filter2D(gray, -1, kernel)
-        ret, thresh = cv2.threshold(filtered, 250, 255, cv2.THRESH_OTSU)
+        _, thresh = cv2.threshold(filtered, 250, 255, cv2.THRESH_OTSU)
 
-        contours, _ = cv2.findContours(
-            thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE
-        )
+        contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
         return contours, thresh
 
     @staticmethod
@@ -296,4 +336,3 @@ class ImagePreprocessingService:
         dim = (width, height)
         resized = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
         return resized
-

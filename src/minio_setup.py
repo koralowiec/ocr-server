@@ -33,7 +33,8 @@ except ResponseError as err:
     raise
 
 try:
-    # copied from here: https://github.com/minio/minio-py/blob/643dc04b50ba07ad596f7f308e4f20f7a99fabff/examples/set_bucket_policy.py#L61
+    # copied from here:
+    # https://github.com/minio/minio-py/blob/643dc04b50ba07ad596f7f308e4f20f7a99fabff/examples/set_bucket_policy.py#L61
     policy_read_write = {
         "Version": "2012-10-17",
         "Statement": [
