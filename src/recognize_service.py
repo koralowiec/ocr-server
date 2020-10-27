@@ -29,7 +29,6 @@ class RecognizeService:
         characters = images["characters"]
         characters_in_one_image = images["concatenated"]
         characters_in_one_image_bordered = images["concatenated_bordered"]
-        # roi = images["roi"]
 
         ImagePreprocessingService.save_images_with_key_as_prefix(images)
 

@@ -20,7 +20,7 @@ services:
   minio:
     image: minio/minio
     ports: 
-      - 9000:9000
+      - 9001:9000
     env_file: 
       - .minio.env
     command: server /data
