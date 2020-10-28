@@ -18,12 +18,11 @@ class ImagePreprocessingService:
 
     @classmethod
     def get_images_with_characters(cls, image: np.ndarray):
+        image = cls.resize_image(image)
         contours, thres = cls.prepare_for_roi_from_biggest_countour(image)
         img_contours_roi = image.copy()
         cv2.drawContours(img_contours_roi, contours, -1, cls.green_color, 3)
         roi, boundary_rectangle = cls.get_roi_from_the_biggest_countour(image, contours)
-
-        roi = cls.resize_image(roi)
 
         image_for_segmentation = cls.prepare_for_segmentation(roi)
         cont = cls.get_contours(image_for_segmentation)
