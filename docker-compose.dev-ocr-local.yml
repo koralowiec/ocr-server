@@ -1,0 +1,17 @@
+version: '2.4'
+services:
+  ocr-server:
+    build: 
+      context: .
+      target: dev
+    ports: 
+      - "5004:5000"
+    volumes:
+      - ./src:/src/src
+      - ./img:/img
+      - ./numbers:/numbers
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MINIO_HOST=192.168.2.100:9000
+    env_file: 
+      - .minio.env

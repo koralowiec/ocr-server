@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from typing import List, Tuple, Union
-from statistics import mode
+from statistics import mode, median
 import io
 import uuid
 from minio.error import ResponseError
@@ -19,10 +19,13 @@ class ImagePreprocessingService:
     @classmethod
     def get_images_with_characters(cls, image: np.ndarray):
         image = cls.resize_image(image)
+
         contours, thres = cls.prepare_for_roi_from_biggest_countour(image)
         img_contours_roi = image.copy()
         cv2.drawContours(img_contours_roi, contours, -1, cls.green_color, 3)
         roi, boundary_rectangle = cls.get_roi_from_the_biggest_countour(image, contours)
+
+        roi = cls.resize_image(roi)
 
         image_for_segmentation = cls.prepare_for_segmentation(roi)
         cont = cls.get_contours(image_for_segmentation)
@@ -226,9 +229,12 @@ class ImagePreprocessingService:
         sorted_contours = cls.sort_contours(cont)
         sorted_characters = cls.contours_to_characters(sorted_contours, img)
         cls.save_images(sorted_characters, filename_prefix="sort")
+
+        # filtered_contours = sorted_contours
         filtered_contours = cls.filter_contours_by_ratios(sorted_contours, img_height)
         filtered_characters = cls.contours_to_characters(filtered_contours, img)
         cls.save_images(filtered_characters, filename_prefix="fil")
+        print("Number of filtered_contours", len(filtered_contours))
 
         characters = []
 
@@ -253,11 +259,22 @@ class ImagePreprocessingService:
 
         heights = [c[3] for c in characters]
         height_mode = mode(heights)
+        height_median = median(heights)
         widths = [c[2] for c in characters]
         width_mode = mode(widths)
 
-        height_factor_min = 0.9 * height_mode
-        height_factor_max = 1.1 * height_mode
+        print("Height mode:", height_mode)
+        print("Height median:", height_median)
+
+        for i in range(len(characters)):
+            print("h", characters[i][3])
+
+        # height_factor_min = 0.9 * height_mode
+        # height_factor_max = 1.1 * height_mode
+        # height_factor_min = 0
+        # height_factor_max = 100 * height_mode
+        height_factor_min = 0.9 * height_median
+        height_factor_max = 1.1 * height_median
         cropped_characters_filtered = list(
             filter(
                 lambda c: c[3] > height_factor_min and c[3] < height_factor_max,
