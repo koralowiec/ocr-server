@@ -40,6 +40,9 @@ class ImagePreprocessingService:
 
         concatenated_characters = cls.concatenate_characters(characters)
 
+        # concatenated_characters_height = concatenated_characters.shape[0]
+        # concatenated_characters_width = concatenated_characters.shape[1]
+        # border_size = int(concatenated_characters_height * 0.3)
         border_size = 3
         concatenated_characters_bordered = cv2.copyMakeBorder(
             concatenated_characters,
@@ -269,12 +272,8 @@ class ImagePreprocessingService:
         for i in range(len(characters)):
             print("h", characters[i][3])
 
-        # height_factor_min = 0.9 * height_mode
-        # height_factor_max = 1.1 * height_mode
-        # height_factor_min = 0
-        # height_factor_max = 100 * height_mode
         height_factor_min = 0.9 * height_median
-        height_factor_max = 1.1 * height_median
+        height_factor_max = 2 * height_median
         cropped_characters_filtered = list(
             filter(
                 lambda c: c[3] > height_factor_min and c[3] < height_factor_max,
