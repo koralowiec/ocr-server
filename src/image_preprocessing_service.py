@@ -245,9 +245,9 @@ class ImagePreprocessingService:
             character = filtered_contours[i]
             (x, y, w, h) = cv2.boundingRect(character)
 
-            cropped_characters_length = len(cropped_characters)
-            if cropped_characters_length > 0:
-                index = cropped_characters[cropped_characters_length - 1][1]
+            characters_length = len(characters)
+            if characters_length > 0:
+                index = characters[characters_length - 1][1]
                 prev_character = filtered_contours[index]
                 prev_rect = cv2.boundingRect(prev_character)
 
