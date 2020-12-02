@@ -1,9 +1,10 @@
 import cv2
 import numpy as np
 from typing import List, Tuple, Union
-from statistics import mode, median
+from statistics import mode, median, mean
 import io
 import uuid
+from collections import deque
 from minio.error import ResponseError
 
 from minio_setup import minio_client, bucket_name
@@ -269,9 +270,6 @@ class ImagePreprocessingService:
         print("Height mode:", height_mode)
         print("Height median:", height_median)
 
-        for i in range(len(characters)):
-            print("h", characters[i][3])
-
         height_factor_min = 0.9 * height_median
         height_factor_max = 2 * height_median
         cropped_characters_filtered = list(
@@ -280,6 +278,32 @@ class ImagePreprocessingService:
                 characters,
             ),
         )
+
+        ys = [c[1] for c in cropped_characters_filtered]
+        y_mean = mean(ys)
+
+        print("Ys: ", ys)
+        print("Y mean: ", y_mean)
+
+        heights = [c[3] for c in cropped_characters_filtered]
+        height_median = median(heights)
+
+        # should change order of characters when process double row lp
+        stack = deque()
+        for i in range(len(cropped_characters_filtered)):
+            if cropped_characters_filtered[i][1] < (y_mean - 0.5 * height_median):
+                stack.append(i)
+
+        corrected_characters = [
+            e for i, e in enumerate(cropped_characters_filtered) if i not in stack
+        ]
+
+        while len(stack) > 0:
+            index = stack.pop()
+            element = cropped_characters_filtered[index]
+            corrected_characters.insert(0, element)
+
+        cropped_characters_filtered = corrected_characters
 
         print(
             "Number of filtered cropped_characters: ",
