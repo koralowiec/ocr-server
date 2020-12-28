@@ -29,6 +29,7 @@ class RecognizeService:
         characters = images["characters"]
         characters_in_one_image = images["concatenated"]
         characters_in_one_image_bordered = images["concatenated_bordered"]
+        roi = images["roi"]
 
         ImagePreprocessingService.save_images_with_key_as_prefix(images)
 
@@ -48,7 +49,7 @@ class RecognizeService:
 
         print(lp_numbers)
 
-        lp_numbers = [n for n in lp_numbers if len(n) > 0]
+        lp_numbers = [n for n in lp_numbers if len(n) > 3]
         lp_numbers_with_potentialy_correct_length = [
             n for n in lp_numbers if len(n) == potential_length_of_lp_number
         ]
@@ -62,9 +63,13 @@ class RecognizeService:
         )
         print("numbers d length", lp_numbers_with_different_length)
 
-        if len(lp_numbers_with_potentialy_correct_length) == 0:
-            if len(lp_numbers_with_different_length) == 0:
-                raise Exception("")
+        if len(lp_numbers) == 0:
+            lp_numbers_from_roi = self.get_numbers(roi)
+            print("numbers roi", lp_numbers_from_roi)
+            potential_length_of_lp_number = len(mode(lp_numbers_from_roi))
+            lp_numbers_with_potentialy_correct_length = lp_numbers_from_roi
+
+        elif len(lp_numbers_with_potentialy_correct_length) == 0:
             potential_length_of_lp_number = len(mode(lp_numbers_with_different_length))
             lp_numbers_with_potentialy_correct_length = [
                 n
